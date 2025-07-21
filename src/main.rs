@@ -1,4 +1,5 @@
 use macroquad::{prelude::*};
+use std::fs;
 
 struct Shape {
     size: f32,
@@ -29,6 +30,10 @@ async fn main() {
     const RADIUS: f32 = 16.0;
     rand::srand(miniquad::date::now() as u64);
 
+    let mut score: u32 = 0;
+    let mut high_score: u32 = fs::read_to_string("highscore.dat")
+        .map_or(Ok(0), |i| i.parse::<u32>())
+        .unwrap_or(0);
     let mut gameover = false;
     let mut squares: Vec<Shape> = vec![];
     let mut bullets: Vec<Shape> = vec![];
@@ -98,6 +103,9 @@ async fn main() {
         }
 
         if squares.iter().any(|square| circle.collide_with(square)) {
+            if score == high_score {
+                fs::write("highscore.dat", high_score.to_string()).ok();
+            }
             gameover = true;
         }
 
@@ -106,6 +114,8 @@ async fn main() {
                 if bullet.collide_with(square) {
                     bullet.collided = true;
                     square.collided = true;
+                    score += square.size.round() as u32;
+                    high_score = high_score.max(score);
                 }
             }
         }
@@ -139,8 +149,24 @@ async fn main() {
             bullets.clear();
             circle.x = screen_width() / 2.0;
             circle.y = screen_height() / 2.0;
+            score = 0;
             gameover = false;
         }
+
+        draw_text(
+            format!("Score: {}", score).as_str(),
+            10.0,
+            35.0,
+            25.0,
+            WHITE);
+        let highscore_text = format!("High score: {}", high_score);
+        let text_dimensions = measure_text(&highscore_text.as_str(), None, 25, 1.0);
+        draw_text(
+            &highscore_text.as_str(), 
+            screen_width() - text_dimensions.width - 10.0, 
+            35.0, 
+            25.0, 
+            WHITE);
 
         next_frame().await;
     }
