@@ -1,6 +1,24 @@
 use macroquad::{prelude::*};
 use std::fs;
 
+const FRAGMENT_SHADER: &str = include_str!("starfield_shader.glsl");
+
+const VERTEX_SHADER: & str = "#version 100
+attribute vec3 position;
+attribute vec2 texcoord;
+attribute vec4 color0;
+varying float iTime;
+
+uniform mat4 Model;
+uniform mat4 Projection;
+uniform vec4 _Time;
+
+void main() {
+    gl_Position = Projection * Model * vec4(position, 1);
+    iTime = _Time.x;
+}
+";
+
 struct Shape {
     size: f32,
     speed: f32,
@@ -52,9 +70,42 @@ async fn main() {
         collided: false,
     };
 
+    let mut direction_modifier: f32 = 0.0;
+    let render_target = render_target(320, 150);
+    render_target.texture.set_filter(FilterMode::Nearest);
+    let material = load_material(
+        ShaderSource::Glsl {
+            vertex: VERTEX_SHADER,
+            fragment: FRAGMENT_SHADER,
+        },
+        MaterialParams {
+            uniforms: vec![
+                UniformDesc::new("iResolution", UniformType::Float2),
+                UniformDesc::new("direction_modifier", UniformType::Float1),
+            ],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
     loop {
 
-        clear_background(DARKPURPLE);
+        clear_background(BLACK);
+
+        material.set_uniform("iResolution", (screen_width(), screen_height()));
+        material.set_uniform("direction_modifier", direction_modifier);
+        gl_use_material(&material);
+        draw_texture_ex(
+            &render_target.texture,
+            0.,
+            0.,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(screen_width(), screen_height())),
+                ..Default::default()
+            },
+        );
+        gl_use_default_material();
 
         match game_state {
             GameState::MainMenu => {
@@ -80,16 +131,18 @@ async fn main() {
             },
             GameState::Playing => {
                 let delta_time = get_frame_time();
-                if is_key_down(KeyCode::Right) {
+                if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
                     circle.x += circle.speed * delta_time;
+                    direction_modifier += 0.05 * delta_time;
                 }
-                if is_key_down(KeyCode::Left) {
+                if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
                     circle.x -= circle.speed * delta_time;
+                    direction_modifier -= 0.05 * delta_time;
                 }
-                if is_key_down(KeyCode::Down) {
+                if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
                     circle.y += circle.speed * delta_time;
                 }
-                if is_key_down(KeyCode::Up) {
+                if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
                     circle.y -= circle.speed * delta_time;
                 }
 
@@ -206,21 +259,6 @@ async fn main() {
             },
         }
         
-        // if gameover {
-        //     let text = "GAME OVER";
-        //     let text_dimensions = measure_text(text, None, 50, 1.0);
-        //     draw_text(
-        //         text,
-        //         screen_width() / 2.0 - text_dimensions.width / 2.0,
-        //         screen_height() / 2.0,
-        //         50.0,
-        //         RED);
-        // }
-
-        // if gameover && is_key_pressed(KeyCode::Space) {
-
-        // }
-
         next_frame().await;
     }
 }
