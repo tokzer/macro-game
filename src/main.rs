@@ -1,5 +1,7 @@
-use macroquad::{prelude::*};
+use macroquad::experimental::animation::{AnimatedSprite, Animation};
+use macroquad::prelude::*;
 use macroquad_particles::{self as particles, ColorCurve, Emitter, EmitterConfig};
+
 use std::fs;
 
 // const FRAGMENT_SHADER: &str = include_str!("starfield_shader.glsl");
@@ -28,13 +30,6 @@ struct Shape {
     collided: bool,
 }
 
-enum GameState {
-    MainMenu,
-    Playing,
-    Paused,
-    GameOver,
-}
-
 impl Shape {
     fn collide_with(&self, other: &Self) -> bool {
         self.rect().overlaps(&other.rect())
@@ -48,6 +43,13 @@ impl Shape {
             h: self.size, 
         }
     }
+}
+
+enum GameState {
+    MainMenu,
+    Playing,
+    Paused,
+    GameOver,
 }
 
 fn particle_explosion() -> particles::EmitterConfig {
@@ -76,8 +78,8 @@ fn particle_explosion() -> particles::EmitterConfig {
 async fn main() {
     const MOVEMENT_SPEED: f32 = 200.0;
     const RADIUS: f32 = 16.0;
+    
     rand::srand(miniquad::date::now() as u64);
-
     let mut score: u32 = 0;
     let mut high_score: u32 = fs::read_to_string("highscore.dat")
         .map_or(Ok(0), |i| i.parse::<u32>())
@@ -93,7 +95,61 @@ async fn main() {
         collided: false,
     };
     let mut explosions: Vec<(Emitter, Vec2)> = vec![];
+    set_pc_assets_folder("assets");
 
+    let ship_texture: Texture2D = load_texture("ship.png").await.expect("Couldn't load ship file!");
+    ship_texture.set_filter(FilterMode::Nearest);
+    let bullet_texture: Texture2D = load_texture("laser-bolts.png").await.expect("Couldn't load bullet file!");
+    bullet_texture.set_filter(FilterMode::Nearest);
+
+    build_textures_atlas();
+
+    let mut bullet_sprite = AnimatedSprite::new(
+        16, 
+        16, 
+        &[
+            Animation{
+                name: "bullet".to_string(),
+                row: 0,
+                frames: 2,
+                fps: 12,
+            },
+            Animation{
+                name: "bolt".to_string(),
+                row: 1,
+                frames: 2,
+                fps: 12,
+            },
+        ],
+        true,
+    );
+    bullet_sprite.set_animation(1);
+
+        let mut ship_sprite = AnimatedSprite::new(
+        16,
+        24,
+        &[
+            Animation {
+                name: "idle".to_string(),
+                row: 0,
+                frames: 2,
+                fps: 12,
+            },
+            Animation {
+                name: "left".to_string(),
+                row: 2,
+                frames: 2,
+                fps: 12,
+            },
+            Animation {
+                name: "right".to_string(),
+                row: 4,
+                frames: 2,
+                fps: 12,
+            },
+        ],
+        true,
+    );
     // let mut direction_modifier: f32 = 0.0;
     // let render_target = render_target(320, 150);
     // render_target.texture.set_filter(FilterMode::Nearest);
@@ -156,13 +212,16 @@ async fn main() {
             },
             GameState::Playing => {
                 let delta_time = get_frame_time();
+                ship_sprite.set_animation(0);
                 if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
                     circle.x += circle.speed * delta_time;
                     // direction_modifier += 0.05 * delta_time;
+                    ship_sprite.set_animation(2);
                 }
                 if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
                     circle.x -= circle.speed * delta_time;
                     // direction_modifier -= 0.05 * delta_time;
+                    ship_sprite.set_animation(1);
                 }
                 if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
                     circle.y += circle.speed * delta_time;
@@ -173,10 +232,10 @@ async fn main() {
 
                 if is_key_pressed(KeyCode::Space) {
                     bullets.push(Shape { 
-                            size: 5.0, 
+                            size: 32.0, 
                             speed: circle.speed * 2.0, 
                             x: circle.x, 
-                            y: circle.y, 
+                            y: circle.y - 24.0, 
                             collided: false
                         });
                 }
@@ -236,10 +295,40 @@ async fn main() {
                         }
                     }
                 }
+                
+                ship_sprite.update();
+                bullet_sprite.update();
+                
+                let bullet_frame = bullet_sprite.frame();
                 for bullet in &bullets {
-                    draw_circle(bullet.x, bullet.y, bullet.size / 2.0, RED);
+                    // draw_circle(bullet.x, bullet.y, bullet.size / 2.0, RED);
+                    draw_texture_ex(
+                        &bullet_texture,
+                        bullet.x - bullet.size / 2.0,
+                        bullet.y - bullet.size / 2.0,
+                        WHITE,
+                        DrawTextureParams {
+                            dest_size: Some(vec2(bullet.size, bullet.size)),
+                            source: Some(bullet_frame.source_rect),
+                            ..Default::default()
+                        },
+                    );
                 }
-                draw_circle(circle.x, circle.y, circle.size, YELLOW);
+
+                // draw_circle(circle.x, circle.y, circle.size, YELLOW);
+                let ship_frame = ship_sprite.frame();
+                draw_texture_ex(
+                    &ship_texture, 
+                    circle.x - ship_frame.dest_size.x, 
+                    circle.y - ship_frame.dest_size.y, 
+                    WHITE, 
+                    DrawTextureParams {
+                        dest_size: Some(ship_frame.dest_size * 2.0),
+                        source: Some(ship_frame.source_rect),
+                        ..Default::default()
+                    }
+                );
+
                 for square in &squares {
                     draw_rectangle(
                         square.x - square.size / 2.0,
