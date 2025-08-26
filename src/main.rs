@@ -1,6 +1,6 @@
 use macroquad::experimental::animation::{AnimatedSprite, Animation};
 use macroquad::prelude::*;
-use macroquad_particles::{self as particles, ColorCurve, Emitter, EmitterConfig};
+use macroquad_particles::{self as particles, AtlasConfig, Emitter, EmitterConfig};
 
 use std::fs;
 
@@ -61,15 +61,11 @@ fn particle_explosion() -> particles::EmitterConfig {
         lifetime_randomness: 0.3,
         explosiveness: 0.65,
         initial_direction_spread: 2.0 * std::f32::consts::PI,
-        initial_velocity: 300.0,
+        initial_velocity: 400.0,
         initial_velocity_randomness: 0.0,
-        size: 3.0,
+        size: 16.0,
         size_randomness: 0.3,
-        colors_curve: ColorCurve {
-            start: RED,
-            mid: ORANGE,
-            end: RED,
-        },
+        atlas: Some(AtlasConfig::new(5, 1, 0..)),
         ..Default::default()
     }
 }
@@ -101,7 +97,8 @@ async fn main() {
     ship_texture.set_filter(FilterMode::Nearest);
     let bullet_texture: Texture2D = load_texture("laser-bolts.png").await.expect("Couldn't load bullet file!");
     bullet_texture.set_filter(FilterMode::Nearest);
-
+    let explosion_texture: Texture2D = load_texture("explosion.png").await.expect("Couldn't load explosion file!");
+    explosion_texture.set_filter(FilterMode::Nearest);
     build_textures_atlas();
 
     let mut bullet_sprite = AnimatedSprite::new(
@@ -287,7 +284,8 @@ async fn main() {
                             high_score = high_score.max(score);
                             explosions.push(
                                 (Emitter::new(EmitterConfig {
-                                        amount: square.size.round() as u32 * 2,
+                                    amount: square.size.round() as u32 * 4,
+                                    texture: Some(explosion_texture.clone()),
                                     ..particle_explosion()
                                 }),
                                 vec2(square.x, square.y),
