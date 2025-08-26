@@ -1,3 +1,4 @@
+use macroquad::audio::{load_sound, play_sound, play_sound_once, PlaySoundParams};
 use macroquad::experimental::animation::{AnimatedSprite, Animation};
 use macroquad::prelude::*;
 use macroquad_particles::{self as particles, AtlasConfig, Emitter, EmitterConfig};
@@ -162,6 +163,15 @@ async fn main() {
         true,
     );
 
+    let theme_music = load_sound("8bit-spaceshooter.ogg").await.unwrap();
+    let sound_explosion = load_sound("explosion.wav").await.unwrap();
+    let sound_laser = load_sound("laser.wav").await.unwrap();
+
+    play_sound(
+        &theme_music,
+        PlaySoundParams { looped: true, volume: 1., },
+    );
+
     // let mut direction_modifier: f32 = 0.0;
     // let render_target = render_target(320, 150);
     // render_target.texture.set_filter(FilterMode::Nearest);
@@ -244,12 +254,13 @@ async fn main() {
 
                 if is_key_pressed(KeyCode::Space) {
                     bullets.push(Shape { 
-                            size: 32.0, 
-                            speed: circle.speed * 2.0, 
-                            x: circle.x, 
-                            y: circle.y - 24.0, 
-                            collided: false
-                        });
+                        size: 32.0, 
+                        speed: circle.speed * 2.0, 
+                        x: circle.x, 
+                        y: circle.y - 24.0, 
+                        collided: false
+                    });
+                    play_sound_once(&sound_laser);
                 }
                 if is_key_pressed(KeyCode::Escape) {
                     game_state = GameState::Paused;
@@ -305,6 +316,7 @@ async fn main() {
                                 }),
                                 vec2(square.x, square.y),
                             ));
+                            play_sound_once(&sound_explosion);
                         }
                     }
                 }
