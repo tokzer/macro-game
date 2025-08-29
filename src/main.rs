@@ -1,5 +1,7 @@
 use macroquad::audio::{load_sound, play_sound, play_sound_once, PlaySoundParams, Sound};
 use macroquad::experimental::animation::{AnimatedSprite, Animation};
+use macroquad::experimental::collections::storage;
+use macroquad::experimental::coroutines::start_coroutine;
 use macroquad::ui::{hash, root_ui, Skin};
 use macroquad::prelude::*;
 use macroquad_particles::{self as particles, AtlasConfig, Emitter, EmitterConfig};
@@ -149,6 +151,31 @@ impl Resources {
             ui_skin,
         })
     }
+
+    pub async fn load() -> Result<(), macroquad::Error> {
+        let resource_loading = start_coroutine(async move {
+            let resources = Resources::new().await.unwrap();
+            storage::store(resources);
+        });
+
+        while !resource_loading.is_done() {
+            clear_background(BLACK);
+            let text = format!(
+                "Loading resources {}",
+                ".".repeat(((get_time() * 2.) as usize) % 4)
+            );
+            draw_text(
+                &text,
+                screen_width() / 2. - 160.,
+                screen_height() / 2.,
+                40.,
+                WHITE,
+            );
+            next_frame().await;
+        }
+
+        Ok(())
+    }
 }
 
 #[macroquad::main("Macro Game")]
@@ -173,7 +200,8 @@ async fn main() -> Result<(), macroquad::Error> {
     };
     let mut explosions: Vec<(Emitter, Vec2)> = vec![];
     set_pc_assets_folder("assets");
-    let resources = Resources::new().await?;
+    Resources::load().await?;
+    let resources = storage::get::<Resources>();
     
     let mut bullet_sprite = AnimatedSprite::new(
         16, 
