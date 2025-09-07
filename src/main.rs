@@ -1,12 +1,17 @@
-use macroquad::audio::{load_sound, play_sound, play_sound_once, PlaySoundParams, Sound};
+use macroquad::audio::{play_sound, play_sound_once, PlaySoundParams};
 use macroquad::experimental::animation::{AnimatedSprite, Animation};
 use macroquad::experimental::collections::storage;
-use macroquad::experimental::coroutines::start_coroutine;
-use macroquad::ui::{hash, root_ui, Skin};
 use macroquad::prelude::*;
+use macroquad::ui::{hash, root_ui};
 use macroquad_particles::{self as particles, AtlasConfig, Emitter, EmitterConfig};
 
 use std::fs;
+
+mod resources;
+use resources::Resources;
+
+mod shape;
+use shape::Shape;
 
 // const FRAGMENT_SHADER: &str = include_str!("starfield_shader.glsl");
 
@@ -25,29 +30,6 @@ use std::fs;
 //     iTime = _Time.x;
 // }
 // ";
-
-struct Shape {
-    size: f32,
-    speed: f32,
-    x: f32,
-    y: f32,
-    collided: bool,
-}
-
-impl Shape {
-    fn collide_with(&self, other: &Self) -> bool {
-        self.rect().overlaps(&other.rect())
-    }
-
-    fn rect(&self) -> Rect {
-        Rect {
-            x: self.x - self.size / 2.0,
-            y: self.y - self.size / 2.0, 
-            w: self.size, 
-            h: self.size, 
-        }
-    }
-}
 
 enum GameState {
     MainMenu,
@@ -71,110 +53,6 @@ fn particle_explosion() -> particles::EmitterConfig {
         size_randomness: 0.3,
         atlas: Some(AtlasConfig::new(5, 1, 0..)),
         ..Default::default()
-    }
-}
-
-struct Resources {
-    ship_texture: Texture2D,
-    bullet_texture: Texture2D,
-    explosion_texture: Texture2D,
-    enemy_small_texture: Texture2D,
-    theme_music: Sound,
-    sound_explosion: Sound,
-    sound_laser: Sound,
-    ui_skin: Skin,
-}
-
-impl Resources {
-    async fn new() -> Result<Resources, macroquad::Error> {
-        let ship_texture: Texture2D = load_texture("ship.png").await?;
-        ship_texture.set_filter(FilterMode::Nearest);
-        let bullet_texture: Texture2D = load_texture("laser-bolts.png").await?;
-        bullet_texture.set_filter(FilterMode::Nearest);
-        let explosion_texture: Texture2D = load_texture("explosion.png").await?;
-        explosion_texture.set_filter(FilterMode::Nearest);
-        let enemy_small_texture: Texture2D = load_texture("enemy-small.png").await?;
-        enemy_small_texture.set_filter(FilterMode::Nearest);
-        build_textures_atlas();
-
-        let theme_music = load_sound("8bit-spaceshooter.ogg").await?;
-        let sound_explosion = load_sound("explosion.wav").await?;
-        let sound_laser = load_sound("laser.wav").await?;
-
-        let window_background = load_image("window_background.png").await?;
-        let button_background = load_image("button_background.png").await?;
-        let button_clicked_background = load_image("button_clicked_background.png").await?;
-        let font = load_file("atari_games.ttf").await?;
-
-        let window_style = root_ui()
-            .style_builder()
-            .background(window_background)
-            .background_margin(RectOffset::new(32.0, 76.0, 44.0, 20.0))
-            .margin(RectOffset::new(0.0, -40.0, 0.0, 0.0))
-            .build();
-
-        let button_style = root_ui()
-            .style_builder()
-            .background(button_background)
-            .background_clicked(button_clicked_background)
-            .background_margin(RectOffset::new(16.0, 16.0, 16.0, 16.0))
-            .margin(RectOffset::new(16.0, 0.0, -8.0, -8.0))
-            .font(&font)
-            .unwrap()
-            .text_color(WHITE)
-            .font_size(64)
-            .build();
-
-        let label_style = root_ui()
-            .style_builder()
-            .font(&font)
-            .unwrap()
-            .text_color(WHITE)
-            .font_size(28)
-            .build();
-
-        let ui_skin = Skin {
-            window_style,
-            button_style,
-            label_style,
-            ..root_ui().default_skin()
-        };
-
-        Ok(Resources {
-            ship_texture,
-            bullet_texture,
-            explosion_texture,
-            enemy_small_texture,
-            theme_music,
-            sound_explosion,
-            sound_laser,
-            ui_skin,
-        })
-    }
-
-    pub async fn load() -> Result<(), macroquad::Error> {
-        let resource_loading = start_coroutine(async move {
-            let resources = Resources::new().await.unwrap();
-            storage::store(resources);
-        });
-
-        while !resource_loading.is_done() {
-            clear_background(BLACK);
-            let text = format!(
-                "Loading resources {}",
-                ".".repeat(((get_time() * 2.) as usize) % 4)
-            );
-            draw_text(
-                &text,
-                screen_width() / 2. - 160.,
-                screen_height() / 2.,
-                40.,
-                WHITE,
-            );
-            next_frame().await;
-        }
-
-        Ok(())
     }
 }
 
@@ -202,7 +80,7 @@ async fn main() -> Result<(), macroquad::Error> {
     set_pc_assets_folder("assets");
     Resources::load().await?;
     let resources = storage::get::<Resources>();
-    
+
     let mut bullet_sprite = AnimatedSprite::new(
         16, 
         16, 
@@ -413,7 +291,7 @@ async fn main() -> Result<(), macroquad::Error> {
                             high_score = high_score.max(score);
                             explosions.push(
                                 (Emitter::new(EmitterConfig {
-                                    amount: square.size.round() as u32 * 4,
+                                    amount: square.size.round() as u32 * 2,
                                     texture: Some(resources.explosion_texture.clone()),
                                     ..particle_explosion()
                                 }),
