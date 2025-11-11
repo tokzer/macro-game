@@ -13,23 +13,23 @@ use resources::Resources;
 mod shape;
 use shape::Shape;
 
-// const FRAGMENT_SHADER: &str = include_str!("starfield_shader.glsl");
+const FRAGMENT_SHADER: &str = include_str!("starfield_shader.glsl");
 
-// const VERTEX_SHADER: & str = "#version 100
-// attribute vec3 position;
-// attribute vec2 texcoord;
-// attribute vec4 color0;
-// varying float iTime;
+const VERTEX_SHADER: & str = "#version 100
+attribute vec3 position;
+attribute vec2 texcoord;
+attribute vec4 color0;
+varying float iTime;
 
-// uniform mat4 Model;
-// uniform mat4 Projection;
-// uniform vec4 _Time;
+uniform mat4 Model;
+uniform mat4 Projection;
+uniform vec4 _Time;
 
-// void main() {
-//     gl_Position = Projection * Model * vec4(position, 1);
-//     iTime = _Time.x;
-// }
-// ";
+void main() {
+    gl_Position = Projection * Model * vec4(position, 1);
+    iTime = _Time.x;
+}
+";
 
 enum GameState {
     MainMenu,
@@ -151,42 +151,42 @@ async fn main() -> Result<(), macroquad::Error> {
 
     
 
-    // let mut direction_modifier: f32 = 0.0;
-    // let render_target = render_target(320, 150);
-    // render_target.texture.set_filter(FilterMode::Nearest);
-    // let material = load_material(
-    //     ShaderSource::Glsl {
-    //         vertex: VERTEX_SHADER,
-    //         fragment: FRAGMENT_SHADER,
-    //     },
-    //     MaterialParams {
-    //         uniforms: vec![
-    //             UniformDesc::new("iResolution", UniformType::Float2),
-    //             UniformDesc::new("direction_modifier", UniformType::Float1),
-    //         ],
-    //         ..Default::default()
-    //     },
-    // )?;
+    let direction_modifier: f32 = 0.0;
+    let render_target = render_target(320, 150);
+    render_target.texture.set_filter(FilterMode::Nearest);
+    let material = load_material(
+        ShaderSource::Glsl {
+            vertex: VERTEX_SHADER,
+            fragment: FRAGMENT_SHADER,
+        },
+        MaterialParams {
+            uniforms: vec![
+                UniformDesc::new("iResolution", UniformType::Float2),
+                UniformDesc::new("direction_modifier", UniformType::Float1),
+            ],
+            ..Default::default()
+        },
+    )?;
     // .unwrap();
 
     loop {
 
         clear_background(BLACK);
 
-        // material.set_uniform("iResolution", (screen_width(), screen_height()));
-        // material.set_uniform("direction_modifier", direction_modifier);
-        // gl_use_material(&material);
-        // draw_texture_ex(
-        //     &render_target.texture,
-        //     0.,
-        //     0.,
-        //     WHITE,
-        //     DrawTextureParams {
-        //         dest_size: Some(vec2(screen_width(), screen_height())),
-        //         ..Default::default()
-        //     },
-        // );
-        // gl_use_default_material();
+        material.set_uniform("iResolution", (screen_width(), screen_height()));
+        material.set_uniform("direction_modifier", direction_modifier);
+        gl_use_material(&material);
+        draw_texture_ex(
+            &render_target.texture,
+            0.,
+            0.,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(screen_width(), screen_height())),
+                ..Default::default()
+            },
+        );
+        gl_use_default_material();
 
         match game_state {
             GameState::MainMenu => {
