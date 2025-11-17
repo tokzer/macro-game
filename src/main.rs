@@ -149,44 +149,44 @@ async fn main() -> Result<(), macroquad::Error> {
     root_ui().push_skin(&resources.ui_skin);
     let window_size = vec2(370.0, 320.0);
 
-    
-
-    let mut direction_modifier: f32 = 0.0;
-    let render_target = render_target(320, 150);
-    render_target.texture.set_filter(FilterMode::Nearest);
-    let material = load_material(
-        ShaderSource::Glsl {
-            vertex: VERTEX_SHADER,
-            fragment: FRAGMENT_SHADER,
-        },
-        MaterialParams {
-            uniforms: vec![
-                UniformDesc::new("iResolution", UniformType::Float2),
-                UniformDesc::new("direction_modifier", UniformType::Float1),
-            ],
-            ..Default::default()
-        },
-    )?;
+        let mut direction_modifier: f32 = 0.0;
+        let render_target = render_target(320, 150);
+        render_target.texture.set_filter(FilterMode::Nearest);
+        let material = load_material(
+            ShaderSource::Glsl {
+                vertex: VERTEX_SHADER,
+                fragment: FRAGMENT_SHADER,
+            },
+            MaterialParams {
+                uniforms: vec![
+                    UniformDesc::new("iResolution", UniformType::Float2),
+                    UniformDesc::new("direction_modifier", UniformType::Float1),
+                ],
+                ..Default::default()
+            },
+        )?;
 
     loop {
 
         clear_background(BLACK);
 
-        material.set_uniform("iResolution", (screen_width(), screen_height()));
-        material.set_uniform("direction_modifier", direction_modifier);
-        gl_use_material(&material);
-        draw_texture_ex(
-            &render_target.texture,
-            0.,
-            0.,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(vec2(screen_width(), screen_height())),
-                ..Default::default()
-            },
-        );
-        gl_use_default_material();
-
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            material.set_uniform("iResolution", (screen_width(), screen_height()));
+            material.set_uniform("direction_modifier", direction_modifier);
+            gl_use_material(&material);
+            draw_texture_ex(
+                &render_target.texture,
+                0.,
+                0.,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(vec2(screen_width(), screen_height())),
+                    ..Default::default()
+                },
+            );
+            gl_use_default_material();
+        }
         match game_state {
             GameState::MainMenu => {
                 root_ui().window(
@@ -217,12 +217,20 @@ async fn main() -> Result<(), macroquad::Error> {
                 ship_sprite.set_animation(0);
                 if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
                     circle.x += circle.speed * delta_time;
-                    direction_modifier += 0.05 * delta_time;
+                    
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        direction_modifier += 0.05 * delta_time;
+                    }
                     ship_sprite.set_animation(2);
                 }
                 if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
                     circle.x -= circle.speed * delta_time;
-                    direction_modifier -= 0.05 * delta_time;
+                    
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        direction_modifier -= 0.05 * delta_time;
+                    }
                     ship_sprite.set_animation(1);
                 }
                 if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
